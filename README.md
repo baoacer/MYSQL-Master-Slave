@@ -1,76 +1,144 @@
-# MYSQL-Master-Slave Replication with Docker
+# 🐬 MySQL Master-Slave Replication with Docker
+
 ## 🧱 Architecture
-+-------------+ Replication +-------------+ | MySQL 1 | --------------------> | MySQL 2 | | (Master) | | (Slave) | +-------------+ +-------------+
+
+```text
++-------------+ Replication +-------------+
+|  MySQL 1    | ------------> |  MySQL 2   |
+|  (Master)   |               |  (Slave)   |
++-------------+               +-------------+
+```
+
+---
 
 
 ## 📦 Docker Setup
 
 ### 1. Create Docker Network 
-```bash
+
+  ```bash
+# Create network
 docker network create my_master_slave
 
-docker run -d --name mysql-master   
-  --network my_master_slave
-  -p 8811:3306
+# Start MySQL Master
+docker run -d --name mysql-master 
+  --network my_master_slave 
+  -p 8811:3306 
   -e MYSQL_ROOT_PASSWORD=root 
   mysql:8.0
 
-docker run -d --name mysql-slave
-  --network my_master_slave
-  -p 8822:3306
+# Start MySQL Slave
+docker run -d --name mysql-slave 
+  --network my_master_slave 
+  -p 8822:3306 
   -e MYSQL_ROOT_PASSWORD=root 
   mysql:8.0
-  ```
+```
 
-master.cnf
+---
+
+### 🔹 2. Configure `my.cnf`
+
+#### 🖊️ Master Configuration (`master.cnf`)
+
 ```bash
-docker cp [id-container-master]:/etc/my.cnf ./mysql/master (path chua file copy)
+# Copy config file from container to host
+docker cp mysql-master:/etc/my.cnf ./mysql/master/my.cnf
 
+# Edit (add the following lines)
 log_bin=mysql-bin
 server-id=1
 
-docker cp ./mysql/master/my.cnf [id-container-master]:/etc/my.cnf
+# Copy back into container
+docker cp ./mysql/master/my.cnf mysql-master:/etc/my.cnf
 ```
 
-slave.cnf
-```bash
-docker cp [id-container-slave]:/etc/my.cnf ./mysql/slave 
+#### 🖊️ Slave Configuration (`slave.cnf`)
 
+```bash
+# Copy config file from container to host
+docker cp mysql-slave:/etc/my.cnf ./mysql/slave/my.cnf
+
+# Edit (add the following lines)
 log_bin=mysql-bin
 server-id=2
 
-docker cp ./mysql/slave/my.cnf [id-container-slave]:/etc/my.cnf
+# Copy back into container
+docker cp ./mysql/slave/my.cnf mysql-slave:/etc/my.cnf
 ```
 
-## ⚙️ Configure 
-### On Master (mysql-master)
+> ✅ **Restart both containers after updating configs**
+
+---
+
+## ⚙️ Configure Replication
+
+### 🔹 On Master (`mysql-master`)
+
 ```sql
--- Check log position
-mysql> SHOW MASTER STATUS;
+-- Log into MySQL
+mysql -uroot -p
+
+-- Check binary log info
+SHOW MASTER STATUS;
 ```
 
-### On Slave (mysql-slave)
+📌 Note down:
+- `File` (e.g., `binlog.000002`)
+- `Position` (e.g., `157`)
+
+---
+
+### 🔹 On Slave (`mysql-slave`)
+
 ```sql
-mysql> CHANGE MASTER TO
-  MASTER_HOST='172.21.0.2' --docker inspect [id-container-master] -> IPAdress,
+-- Log into MySQL
+mysql -uroot -p
+
+-- Replace IP with master container IP (docker inspect)
+CHANGE MASTER TO
+  MASTER_HOST='172.21.0.2',
   MASTER_PORT=3306,
   MASTER_USER='root',
   MASTER_PASSWORD='root',
-  MASTER_LOG_FILE='binlog.000002', -- master SHOW MASTER STATUS
-  MASTER_LOG_POS=157, -- master SHOW MASTER STATUS
+  MASTER_LOG_FILE='binlog.000002',
+  MASTER_LOG_POS=157,
   MASTER_CONNECT_RETRY=60,
   GET_MASTER_PUBLIC_KEY=1;
 
+-- Start replication
 START SLAVE;
-START REPLICA;
+-- (or START REPLICA; for MySQL 8+)
+
+-- Check status
 SHOW SLAVE STATUS\G;
-SHOW REPLICA STATUS\G;
+-- (or SHOW REPLICA STATUS\G;)
 ```
 
-```sql
-SHOW SLAVE STATUS\G;
-
-check 
+✅ Ensure the following:
+```
 Slave_IO_Running: Yes
 Slave_SQL_Running: Yes
 ```
+
+---
+
+## 🧪 Test Replication
+
+### 🔹 On Master
+
+```sql
+CREATE DATABASE test DEFAULT CHARSET utf8mb4;
+
+-- Check
+SHOW DATABASES;
+```
+
+### 🔹 On Slave
+
+```sql
+-- Check replicated database
+SHOW DATABASES;
+```
+
+---
