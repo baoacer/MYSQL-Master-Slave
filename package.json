@@ -1,0 +1,23 @@
+{
+  "name": "mysql-master-slave",
+  "version": "1.0.0",
+  "description": "+-------------+ Replication +-------------+ | MySQL 1 | --------------------> | MySQL 2 | | (Master) | | (Slave) | +-------------+ +-------------+",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/baoacer/MYSQL-Master-Slave.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/baoacer/MYSQL-Master-Slave/issues"
+  },
+  "homepage": "https://github.com/baoacer/MYSQL-Master-Slave#readme",
+  "dependencies": {
+    "mysql2": "^3.14.0"
+  }
+}
